@@ -26,7 +26,7 @@
 
 import UIKit
 
-let CellLabelFont = UIFont.preferredFontForTextStyle(UIFontTextStyleSubheadline)
+let CellLabelFont = UIFont.preferredFont(forTextStyle: UIFontTextStyle.subheadline)
 let Leading: CGFloat = 20
 let Spacing: CGFloat = 14
 let ImageWidth: CGFloat = 20
@@ -36,11 +36,11 @@ let LineWidth: CGFloat = 1
 let CornerRadius: CGFloat = 6
 
 public enum Direction {
-    case Up, Down
+    case up, down
 }
 
 public enum PopoverStyle {
-    case Normal, WithImage
+    case normal, withImage
 }
 
 internal struct AssociationKey {
@@ -48,8 +48,8 @@ internal struct AssociationKey {
 }
 
 /// Convert a `void *` type to Swift type, use this function carefully
-private func convertUnsafePointerToSwiftType<T>(value: UnsafePointer<Void>) -> T {
-    return unsafeBitCast(value, UnsafePointer<T>.self).memory
+private func convertUnsafePointerToSwiftType<T>(_ value: UnsafeRawPointer) -> T {
+    return unsafeBitCast(value, to: UnsafePointer<T>.self).pointee
 }
 
 internal extension UIViewController {
@@ -64,10 +64,10 @@ internal extension String {
         return characters.count
     }
     
-    internal func sizeWithFont(font: UIFont, preferredMaxLayoutWidth: CGFloat) -> CGSize {
+    internal func sizeWithFont(_ font: UIFont, preferredMaxLayoutWidth: CGFloat) -> CGSize {
         let str = self as NSString
-        let options: NSStringDrawingOptions = [.UsesLineFragmentOrigin, .UsesFontLeading, .TruncatesLastVisibleLine]
-        return str.boundingRectWithSize(CGSizeMake(preferredMaxLayoutWidth, CGFloat.max), options: options, attributes: [NSFontAttributeName: font], context: nil).size
+        let options: NSStringDrawingOptions = [.usesLineFragmentOrigin, .usesFontLeading, .truncatesLastVisibleLine]
+        return str.boundingRect(with: CGSize(width: preferredMaxLayoutWidth, height: CGFloat.greatestFiniteMagnitude), options: options, attributes: [NSFontAttributeName: font], context: nil).size
     }
 }
 
@@ -78,9 +78,9 @@ internal extension Double {
 }
 
 internal func drawArrawImageIn(
-    rect: CGRect,
+    _ rect: CGRect,
     strokeColor: UIColor,
-    fillColor: UIColor = UIColor.clearColor(),
+    fillColor: UIColor = UIColor.clear,
     lineWidth: CGFloat = 1,
     arrawCenterX: CGFloat,
     arrawWidth: CGFloat = 5,
@@ -93,38 +93,41 @@ internal func drawArrawImageIn(
     let context = UIGraphicsGetCurrentContext()
 
     if handstand {
-        CGContextSetTextMatrix(context, CGAffineTransformIdentity)
-        CGContextTranslateCTM(context, 0, CGRectGetHeight(rect))
-        CGContextScaleCTM(context, 1.0, -1.0)
+        context!.textMatrix = CGAffineTransform.identity
+        context?.translateBy(x: 0, y: rect.height)
+        context?.scaleBy(x: 1.0, y: -1.0)
     }
     
     // Perform the drawing
-    CGContextSetLineWidth(context, lineWidth)
-    CGContextSetStrokeColorWithColor(context, strokeColor.CGColor)
-    CGContextSetFillColorWithColor(context, fillColor.CGColor)
+    context?.setLineWidth(lineWidth)
+    context?.setStrokeColor(strokeColor.cgColor)
+    context?.setFillColor(fillColor.cgColor)
     
-    let path = CGPathCreateMutable()
+    let path = CGMutablePath()
     let lineHalfWidth = lineWidth / 2.0
     let arrawHalfWidth = arrawWidth / 2.0
-    CGPathMoveToPoint(path, nil, arrawCenterX, lineWidth)
-    CGPathAddLineToPoint(path, nil, arrawCenterX - arrawHalfWidth, arrawHeight + lineWidth)
-    CGPathAddLineToPoint(path, nil, cornerRadius + arrawHeight, arrawHeight + lineWidth)
-    CGPathAddArc(path, nil, cornerRadius + lineHalfWidth, cornerRadius + arrawHeight + lineWidth, cornerRadius, 270.radian, 180.radian, true)
-    CGPathAddLineToPoint(path, nil, lineHalfWidth, CGRectGetHeight(rect) - cornerRadius - lineHalfWidth)
-    CGPathAddArc(path, nil, cornerRadius + lineHalfWidth, CGRectGetHeight(rect) - cornerRadius - lineHalfWidth, cornerRadius, 180.radian, 90.radian, true)
-    CGPathAddLineToPoint(path, nil, CGRectGetWidth(rect) - cornerRadius - lineHalfWidth, CGRectGetHeight(rect) - lineHalfWidth)
-    CGPathAddArc(path, nil, CGRectGetWidth(rect) - cornerRadius - lineHalfWidth, CGRectGetHeight(rect) - cornerRadius - lineHalfWidth, cornerRadius, 90.radian, 0.radian, true)
-    CGPathAddLineToPoint(path, nil, CGRectGetWidth(rect) - lineHalfWidth, arrawHeight + cornerRadius + lineHalfWidth)
-    CGPathAddArc(path, nil, CGRectGetWidth(rect) - cornerRadius - lineHalfWidth, cornerRadius + arrawHeight + lineWidth, cornerRadius, 0.radian, -90.radian, true)
-    CGPathAddLineToPoint(path, nil, arrawCenterX + arrawHalfWidth, arrawHeight + lineWidth)
-    CGPathCloseSubpath(path)
+    let transform = CGAffineTransform.init()
+    path.move(to: CGPoint(x: arrawCenterX, y: lineWidth))
+    path.addLine(to: CGPoint.init(x: arrawCenterX - arrawHalfWidth, y: arrawHeight + lineWidth), transform: transform)
+    path.addLine(to: CGPoint.init(x: cornerRadius + arrawHeight, y: arrawHeight + lineWidth), transform: transform)
+    path.addArc(center: CGPoint.init(x: cornerRadius + lineHalfWidth, y: cornerRadius + arrawHeight + lineWidth), radius: 270.radian, startAngle: 0.radian, endAngle: 180.radian, clockwise: true)
+    path.addLine(to: CGPoint.init(x: lineHalfWidth, y: rect.height - cornerRadius - lineHalfWidth), transform: transform)
+    path.addArc(center: CGPoint.init(x: cornerRadius + lineHalfWidth, y: rect.height - cornerRadius - lineHalfWidth), radius: 180.radian, startAngle: 270.radian, endAngle: 90.radian, clockwise: true)
+    path.addLine(to: CGPoint.init(x: rect.width - cornerRadius - lineHalfWidth, y: rect.height - lineHalfWidth), transform: transform)
+
+    path.addArc(center: CGPoint.init(x: rect.width - cornerRadius - lineHalfWidth, y: rect.height - cornerRadius - lineHalfWidth), radius: 180.radian, startAngle: 90.radian, endAngle: 0.radian, clockwise: true)
+    path.addLine(to: CGPoint.init(x: rect.width - lineHalfWidth, y: arrawHeight + cornerRadius + lineHalfWidth), transform: transform)
+        path.addArc(center: CGPoint.init(x: rect.width - cornerRadius - lineHalfWidth, y: cornerRadius + arrawHeight + lineWidth), radius: 180.radian, startAngle: 0.radian, endAngle: -90.radian, clockwise: true)
+    path.addLine(to: CGPoint.init(x: arrawCenterX + arrawHalfWidth, y: arrawHeight + lineWidth), transform: transform)
+
+    path.closeSubpath()
     
-    CGContextAddPath(context, path)
-    CGContextDrawPath(context, .FillStroke)
+    context?.addPath(path)
+    context?.drawPath(using: .fillStroke)
     
     let output = UIGraphicsGetImageFromCurrentImageContext()
     
     UIGraphicsEndImageContext()
     
-    return output
+    return output!
 }
